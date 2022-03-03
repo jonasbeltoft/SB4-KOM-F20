@@ -14,24 +14,22 @@ import dk.sdu.mmmi.cbse.common.data.World;
 import dk.sdu.mmmi.cbse.common.services.IEntityProcessingService;
 import dk.sdu.mmmi.cbse.common.services.IGamePluginService;
 import dk.sdu.mmmi.cbse.common.services.IPostEntityProcessingService;
+import dk.sdu.mmmi.cbse.common.util.SPILocator;
 import dk.sdu.mmmi.cbse.enemysystem.EnemyControlSystem;
 import dk.sdu.mmmi.cbse.enemysystem.EnemyPlugin;
 import dk.sdu.mmmi.cbse.managers.GameInputProcessor;
 import dk.sdu.mmmi.cbse.playersystem.PlayerControlSystem;
 import dk.sdu.mmmi.cbse.playersystem.PlayerPlugin;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-public class Game
-        implements ApplicationListener {
+public class Game implements ApplicationListener {
 
     private static OrthographicCamera cam;
     private ShapeRenderer sr;
 
     private final GameData gameData = new GameData();
-    private List<IEntityProcessingService> entityProcessors = new ArrayList<>();
-    private List<IPostEntityProcessingService> entityPostProcessors = new ArrayList<>();
-    private List<IGamePluginService> entityPlugins = new ArrayList<>();
     private World world = new World();
 
     @Override
@@ -50,29 +48,8 @@ public class Game
                 new GameInputProcessor(gameData)
         );
 
-        IGamePluginService playerPlugin = new PlayerPlugin();
-        IEntityProcessingService playerProcess = new PlayerControlSystem();
-        entityPlugins.add(playerPlugin);
-        entityProcessors.add(playerProcess);
-
-        IGamePluginService enemyPlugin = new EnemyPlugin();
-        entityPlugins.add(enemyPlugin);
-        entityPlugins.add(enemyPlugin);
-        entityPlugins.add(enemyPlugin);
-
-        IEntityProcessingService enemyProcess = new EnemyControlSystem();
-        entityProcessors.add(enemyProcess);
-
-        IGamePluginService asteroidPlugin = new AsteroidPlugin();
-        IEntityProcessingService asteroidProcess = new AsteroidControlSystem();
-        entityPlugins.add(asteroidPlugin);
-        entityProcessors.add(asteroidProcess);
-
-        IPostEntityProcessingService collisionProcess = new Collision();
-        entityPostProcessors.add(collisionProcess);
-
         // Lookup all Game Plugins using ServiceLoader
-        for (IGamePluginService iGamePlugin : entityPlugins) {
+        for (IGamePluginService iGamePlugin : getPluginServices()) {
             iGamePlugin.start(gameData, world);
         }
     }
@@ -95,11 +72,11 @@ public class Game
 
     private void update() {
         // Update
-        for (IEntityProcessingService entityProcessorService : entityProcessors) {
+        for (IEntityProcessingService entityProcessorService : getEntityProcessingServices()) {
             entityProcessorService.process(gameData, world);
         }
         // Post Update
-        for (IPostEntityProcessingService entityPostProcessorService : entityPostProcessors) {
+        for (IPostEntityProcessingService entityPostProcessorService : getPostEntityProcessingServices()) {
             entityPostProcessorService.process(gameData, world);
         }
     }
@@ -139,5 +116,17 @@ public class Game
 
     @Override
     public void dispose() {
+    }
+
+    private Collection<? extends IGamePluginService> getPluginServices() {
+        return SPILocator.locateAll(IGamePluginService.class);
+    }
+
+    private Collection<? extends IEntityProcessingService> getEntityProcessingServices() {
+        return SPILocator.locateAll(IEntityProcessingService.class);
+    }
+
+    private Collection<? extends IPostEntityProcessingService> getPostEntityProcessingServices() {
+        return SPILocator.locateAll(IPostEntityProcessingService.class);
     }
 }
